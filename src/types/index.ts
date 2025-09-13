@@ -86,3 +86,27 @@ export interface MoralisProfitabilityResponse {
 export interface MoralisNetWorthResponse {
   total_networth_usd?: number;
 }
+
+// Token balances with price response
+export interface TokenBalanceWithPrice {
+  token_address?: string;
+  name?: string;
+  symbol?: string;
+  decimals?: number;
+  balance?: string; // raw string
+  usd_price?: number;
+  usd_value?: number;
+}
+
+export interface TokenBalancesWithPriceResponse {
+  result?: TokenBalanceWithPrice[];
+}
+
+export interface NativeBalanceForAddress {
+  address: string;
+  balance: string; // wei
+}
+
+export interface NativeBalancesForAddressesResponse {
+  result: NativeBalanceForAddress[];
+}

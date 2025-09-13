@@ -23,6 +23,7 @@ import {
 } from "./utils/moralis";
 import { calculateProfitLoss } from "./utils/calculations";
 import { MoralisProfitDisplay } from "./components/MoralisProfitDisplay";
+import { WalletBalancesDisplay } from "./components/WalletBalancesDisplay";
 
 function App() {
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,8 @@ function App() {
   const [networth, setNetworth] = useState<MoralisNetWorthResponse | null>(
     null
   );
+  const [tokensWithPrice, setTokensWithPrice] = useState<any | null>(null);
+  const [nativeBalances, setNativeBalances] = useState<any | null>(null);
   const [currentAddress, setCurrentAddress] = useState<string>("");
   const [error, setError] = useState<string>("");
 
@@ -52,15 +55,28 @@ function App() {
       await initializeMoralis();
 
       // Fetch transactions, balance and ETH/USD price in parallel
-      const [txData, balance, ethUsd, summary, items, worth] =
-        await Promise.all([
-          getWalletTransactions(address),
-          getEthBalance(address),
-          getEthUsdPrice(),
-          getWalletProfitabilitySummary(address),
-          getWalletProfitability(address),
-          getWalletNetWorth(address),
-        ]);
+      const [
+        txData,
+        balance,
+        ethUsd,
+        summary,
+        items,
+        worth,
+        tokensWithPrice,
+        nativeBalances,
+      ] = await Promise.all([
+        getWalletTransactions(address),
+        getEthBalance(address),
+        getEthUsdPrice(),
+        getWalletProfitabilitySummary(address),
+        getWalletProfitability(address),
+        getWalletNetWorth(address),
+        // extra balances for balances display
+        (await import("./utils/moralis")).getWalletTokenBalancesPrices(address),
+        (
+          await import("./utils/moralis")
+        ).getNativeBalancesForAddresses([address]),
+      ]);
 
       if (!txData || txData.length === 0) {
         throw new Error("No transactions found for this address");
@@ -80,6 +96,8 @@ function App() {
       setProfitItems(items);
       setNetworth(worth);
       setCurrentAddress(address);
+      setTokensWithPrice(tokensWithPrice);
+      setNativeBalances(nativeBalances);
     } catch (err: any) {
       console.error("Analysis error:", err);
       setError(
@@ -162,6 +180,11 @@ function App() {
               summary={profitSummary}
               items={profitItems}
               networth={networth}
+            />
+            <WalletBalancesDisplay
+              address={currentAddress}
+              tokensWithPrice={tokensWithPrice}
+              nativeBalances={nativeBalances}
             />
             <TransactionList
               transactions={transactions}

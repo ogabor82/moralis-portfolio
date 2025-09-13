@@ -3,6 +3,8 @@ import type {
   MoralisProfitabilityResponse,
   MoralisProfitabilitySummary,
   MoralisNetWorthResponse,
+  TokenBalancesWithPriceResponse,
+  NativeBalancesForAddressesResponse,
 } from "../types";
 
 // Vite exposes env vars via import.meta.env and requires the VITE_ prefix
@@ -97,7 +99,7 @@ export const getWalletProfitabilitySummary = async (
         chain,
       }
     );
-    return response.raw as MoralisProfitabilitySummary;
+    return response.toJSON() as MoralisProfitabilitySummary;
   } catch (error) {
     console.error("Error fetching wallet profitability summary:", error);
     throw error;
@@ -114,7 +116,7 @@ export const getWalletProfitability = async (
       address,
       chain,
     });
-    return response.raw as MoralisProfitabilityResponse;
+    return response.toJSON() as MoralisProfitabilityResponse;
   } catch (error) {
     console.error("Error fetching wallet profitability:", error);
     throw error;
@@ -131,11 +133,83 @@ export const getWalletNetWorth = async (
       address,
       chains: [chain],
     });
-    const raw = response.raw as unknown as { total_networth_usd?: string };
-    const totalUsd = parseFloat(raw.total_networth_usd ?? "0");
+    const raw = response.toJSON() as unknown as {
+      total_networth_usd?: string | number;
+    };
+    const totalUsd = parseFloat(String(raw.total_networth_usd ?? "0"));
     return { total_networth_usd: totalUsd } as MoralisNetWorthResponse;
   } catch (error) {
     console.error("Error fetching wallet net worth:", error);
+    throw error;
+  }
+};
+
+// Wallet token balances with prices
+export const getWalletTokenBalancesPrices = async (
+  address: string,
+  chain: string = "0x1"
+): Promise<TokenBalancesWithPriceResponse> => {
+  try {
+    const response = await Moralis.EvmApi.wallets.getWalletTokenBalancesPrice({
+      address,
+      chain,
+    });
+    const json = response.toJSON() as unknown as {
+      result?: Array<{
+        token_address?: string;
+        name?: string;
+        symbol?: string;
+        decimals?: string | number;
+        balance?: string;
+        usd_price?: string | number;
+        usd_value?: string | number;
+      }>;
+    };
+    const normalized = {
+      result: (json.result || []).map((t) => ({
+        token_address: t.token_address,
+        name: t.name,
+        symbol: t.symbol,
+        decimals:
+          typeof t.decimals === "string" ? parseInt(t.decimals) : t.decimals,
+        balance: t.balance,
+        usd_price:
+          t.usd_price !== undefined
+            ? parseFloat(String(t.usd_price))
+            : undefined,
+        usd_value:
+          t.usd_value !== undefined
+            ? parseFloat(String(t.usd_value))
+            : undefined,
+      })),
+    } as TokenBalancesWithPriceResponse;
+    return normalized;
+  } catch (error) {
+    console.error("Error fetching token balances with price:", error);
+    throw error;
+  }
+};
+
+// Native balances for a list of addresses
+export const getNativeBalancesForAddresses = async (
+  addresses: string[],
+  chain: string = "0x1"
+): Promise<NativeBalancesForAddressesResponse> => {
+  try {
+    const response = await Moralis.EvmApi.balance.getNativeBalancesForAddresses(
+      {
+        chain,
+        walletAddresses: addresses,
+      }
+    );
+    const simplified = (
+      response.raw as unknown as Array<{
+        wallet_balances: { address: string; balance: string }[];
+      }>
+    ).flatMap((c) => c.wallet_balances);
+    return { result: simplified } as NativeBalancesForAddressesResponse;
+  } catch (error) {
+    console.error("Error fetching native balances for addresses:", error);
     throw error;
   }
 };
