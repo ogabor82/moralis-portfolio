@@ -22,6 +22,12 @@ import {
   getWalletNetWorth,
 } from "./utils/moralis";
 import { calculateProfitLoss } from "./utils/calculations";
+import {
+  initializeMoralisSol,
+  getSolBalance,
+  getSplTokens,
+  getSolPortfolio,
+} from "./utils/moralisSolana";
 import { MoralisProfitDisplay } from "./components/MoralisProfitDisplay";
 import { WalletBalancesDisplay } from "./components/WalletBalancesDisplay";
 
@@ -41,7 +47,10 @@ function App() {
   const [currentAddress, setCurrentAddress] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  const analyzeWallet = async (address: string) => {
+  const analyzeWallet = async (
+    address: string,
+    chain: "eth" | "sol" = "eth"
+  ) => {
     setLoading(true);
     setError("");
     setTransactions([]);
@@ -51,53 +60,101 @@ function App() {
     setNetworth(null);
 
     try {
+      // Resolve chain defensively from input
+      const resolvedChain: "eth" | "sol" = chain
+        ? chain
+        : /^0x[a-fA-F0-9]{40}$/.test(address)
+        ? "eth"
+        : "sol";
+
       // Initialize Moralis if not already done
       await initializeMoralis();
+      await initializeMoralisSol();
 
-      // Fetch transactions, balance and ETH/USD price in parallel
-      const [
-        txData,
-        balance,
-        ethUsd,
-        summary,
-        items,
-        worth,
-        tokensWithPrice,
-        nativeBalances,
-      ] = await Promise.all([
-        getWalletTransactions(address),
-        getEthBalance(address),
-        getEthUsdPrice(),
-        getWalletProfitabilitySummary(address),
-        getWalletProfitability(address),
-        getWalletNetWorth(address),
-        // extra balances for balances display
-        (await import("./utils/moralis")).getWalletTokenBalancesPrices(address),
-        (
-          await import("./utils/moralis")
-        ).getNativeBalancesForAddresses([address]),
-      ]);
+      if (resolvedChain === "eth") {
+        // Fetch transactions, balance and ETH/USD price in parallel
+        const [
+          txData,
+          balance,
+          ethUsd,
+          summary,
+          items,
+          worth,
+          tokensWithPrice,
+          nativeBalances,
+        ] = await Promise.all([
+          getWalletTransactions(address),
+          getEthBalance(address),
+          getEthUsdPrice(),
+          getWalletProfitabilitySummary(address),
+          getWalletProfitability(address),
+          getWalletNetWorth(address),
+          // extra balances for balances display
+          (
+            await import("./utils/moralis")
+          ).getWalletTokenBalancesPrices(address),
+          (
+            await import("./utils/moralis")
+          ).getNativeBalancesForAddresses([address]),
+        ]);
 
-      if (!txData || txData.length === 0) {
-        throw new Error("No transactions found for this address");
+        if (!txData || txData.length === 0) {
+          throw new Error("No transactions found for this address");
+        }
+
+        // Calculate profit/loss with USD metrics
+        const profitLossData = calculateProfitLoss(
+          txData,
+          address,
+          balance,
+          ethUsd
+        );
+
+        setTransactions(txData);
+        setProfitData(profitLossData);
+        setProfitSummary(summary);
+        setProfitItems(items);
+        setNetworth(worth);
+        setCurrentAddress(address);
+        setTokensWithPrice(tokensWithPrice);
+        setNativeBalances(nativeBalances);
+      } else {
+        // Solana branch: fetch balance, SPL tokens and portfolio
+        const [solBalance, spl, portfolio] = await Promise.all([
+          getSolBalance(address),
+          getSplTokens(address),
+          getSolPortfolio(address),
+        ]);
+
+        // Store address and reuse balances display by mapping SPL tokens to expected shape
+        setCurrentAddress(address);
+        setProfitData(null); // EVM-specific PnL not applicable for SOL right now
+        setProfitSummary(null);
+        setProfitItems(null);
+        setNetworth({
+          total_networth_usd: portfolio?.total_value_usd
+            ? Number(portfolio.total_value_usd)
+            : undefined,
+        } as any);
+
+        // Map SPL to WalletBalancesDisplay shape quickly
+        const tokensWithPrice = {
+          result: (spl?.items || []).map((t: any) => ({
+            token_address: t.mint || undefined,
+            name: t.name || undefined,
+            symbol: t.symbol || undefined,
+            decimals: t.decimals ?? 9,
+            balance: String(t.amount_raw ?? 0),
+            usd_price: t.price_usd ? Number(t.price_usd) : undefined,
+            usd_value: t.value_usd ? Number(t.value_usd) : undefined,
+          })),
+        } as any;
+        const nativeBalances = {
+          result: [{ address, balance: String(solBalance?.balance || 0) }],
+        } as any;
+        setTokensWithPrice(tokensWithPrice);
+        setNativeBalances(nativeBalances);
       }
-
-      // Calculate profit/loss with USD metrics
-      const profitLossData = calculateProfitLoss(
-        txData,
-        address,
-        balance,
-        ethUsd
-      );
-
-      setTransactions(txData);
-      setProfitData(profitLossData);
-      setProfitSummary(summary);
-      setProfitItems(items);
-      setNetworth(worth);
-      setCurrentAddress(address);
-      setTokensWithPrice(tokensWithPrice);
-      setNativeBalances(nativeBalances);
     } catch (err: any) {
       console.error("Analysis error:", err);
       setError(
