@@ -1,50 +1,64 @@
-import React, { useState } from 'react';
-import { BarChart3, AlertTriangle } from 'lucide-react';
-import { WalletInput } from './components/WalletInput';
-import { ProfitDisplay } from './components/ProfitDisplay';
-import { TransactionList } from './components/TransactionList';
-import { LoadingState } from './components/LoadingState';
-import { ErrorState } from './components/ErrorState';
-import { Transaction, ProfitData } from './types';
-import { initializeMoralis, getWalletTransactions, getEthBalance } from './utils/moralis';
-import { calculateProfitLoss } from './utils/calculations';
+import React, { useState } from "react";
+import { BarChart3, AlertTriangle } from "lucide-react";
+import { WalletInput } from "./components/WalletInput";
+import { ProfitDisplay } from "./components/ProfitDisplay";
+import { TransactionList } from "./components/TransactionList";
+import { LoadingState } from "./components/LoadingState";
+import { ErrorState } from "./components/ErrorState";
+import { Transaction, ProfitData } from "./types";
+import {
+  initializeMoralis,
+  getWalletTransactions,
+  getEthBalance,
+  getEthUsdPrice,
+} from "./utils/moralis";
+import { calculateProfitLoss } from "./utils/calculations";
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [profitData, setProfitData] = useState<ProfitData | null>(null);
-  const [currentAddress, setCurrentAddress] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [currentAddress, setCurrentAddress] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
   const analyzeWallet = async (address: string) => {
     setLoading(true);
-    setError('');
+    setError("");
     setTransactions([]);
     setProfitData(null);
 
     try {
       // Initialize Moralis if not already done
       await initializeMoralis();
-      
-      // Fetch transactions and balance
-      const [txData, balance] = await Promise.all([
+
+      // Fetch transactions, balance and ETH/USD price in parallel
+      const [txData, balance, ethUsd] = await Promise.all([
         getWalletTransactions(address),
-        getEthBalance(address)
+        getEthBalance(address),
+        getEthUsdPrice(),
       ]);
 
       if (!txData || txData.length === 0) {
-        throw new Error('No transactions found for this address');
+        throw new Error("No transactions found for this address");
       }
 
-      // Calculate profit/loss
-      const profitLossData = calculateProfitLoss(txData, address, balance);
+      // Calculate profit/loss with USD metrics
+      const profitLossData = calculateProfitLoss(
+        txData,
+        address,
+        balance,
+        ethUsd
+      );
 
       setTransactions(txData);
       setProfitData(profitLossData);
       setCurrentAddress(address);
     } catch (err: any) {
-      console.error('Analysis error:', err);
-      setError(err.message || 'Failed to analyze wallet. Please check the address and try again.');
+      console.error("Analysis error:", err);
+      setError(
+        err.message ||
+          "Failed to analyze wallet. Please check the address and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -66,8 +80,12 @@ function App() {
               <BarChart3 className="w-8 h-8 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Wallet Analyzer</h1>
-              <p className="text-gray-600">Analyze any Ethereum wallet's profit and loss</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Wallet Analyzer
+              </h1>
+              <p className="text-gray-600">
+                Analyze any Ethereum wallet's profit and loss
+              </p>
             </div>
           </div>
         </div>
@@ -82,10 +100,18 @@ function App() {
             <span className="font-medium text-yellow-800">Setup Required</span>
           </div>
           <p className="text-sm text-yellow-700">
-            To use this application, you need to replace 'YOUR_MORALIS_API_KEY' in 
-            <code className="mx-1 px-2 py-1 bg-yellow-100 rounded">src/utils/moralis.ts</code> 
-            with your actual Moralis API key. Get one free at 
-            <a href="https://moralis.io" target="_blank" rel="noopener noreferrer" className="underline ml-1">
+            To use this application, you need to replace 'YOUR_MORALIS_API_KEY'
+            in
+            <code className="mx-1 px-2 py-1 bg-yellow-100 rounded">
+              src/utils/moralis.ts
+            </code>
+            with your actual Moralis API key. Get one free at
+            <a
+              href="https://moralis.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline ml-1"
+            >
               moralis.io
             </a>
           </p>
@@ -96,13 +122,19 @@ function App() {
         {loading && <LoadingState />}
 
         {error && (
-          <ErrorState message={error} onRetry={currentAddress ? handleRetry : undefined} />
+          <ErrorState
+            message={error}
+            onRetry={currentAddress ? handleRetry : undefined}
+          />
         )}
 
         {profitData && currentAddress && (
           <>
             <ProfitDisplay profitData={profitData} address={currentAddress} />
-            <TransactionList transactions={transactions} walletAddress={currentAddress} />
+            <TransactionList
+              transactions={transactions}
+              walletAddress={currentAddress}
+            />
           </>
         )}
 
@@ -114,7 +146,8 @@ function App() {
                 Ready to Analyze
               </h3>
               <p className="text-gray-600">
-                Enter any Ethereum wallet address above to see detailed transaction history and profit/loss analysis.
+                Enter any Ethereum wallet address above to see detailed
+                transaction history and profit/loss analysis.
               </p>
             </div>
           </div>

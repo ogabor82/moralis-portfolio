@@ -42,4 +42,9 @@ export interface ProfitData {
   profit: number;
   profitPercentage: number;
   isProfit: boolean;
+  // USD metrics
+  ethUsdPrice?: number;
+  totalValueUsd?: number;
+  totalSpentUsd?: number;
+  profitUsd?: number;
 }

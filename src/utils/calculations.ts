@@ -1,9 +1,10 @@
-import { Transaction, ProfitData } from '../types';
+import { Transaction, ProfitData } from "../types";
 
 export const calculateProfitLoss = (
   transactions: Transaction[],
   address: string,
-  currentBalance: string
+  currentBalance: string,
+  ethUsdPrice?: number
 ): ProfitData => {
   let totalReceived = 0;
   let totalSpent = 0;
@@ -11,8 +12,8 @@ export const calculateProfitLoss = (
 
   transactions.forEach((tx) => {
     const value = parseFloat(tx.value) / Math.pow(10, 18); // Convert Wei to ETH
-    const gas = parseFloat(tx.gas || '0');
-    const gasPrice = parseFloat(tx.gas_price || '0');
+    const gas = parseFloat(tx.gas || "0");
+    const gasPrice = parseFloat(tx.gas_price || "0");
     const gasFee = (gas * gasPrice) / Math.pow(10, 18);
 
     if (tx.to_address.toLowerCase() === address.toLowerCase()) {
@@ -31,13 +32,22 @@ export const calculateProfitLoss = (
   const profit = totalValue - totalCost;
   const profitPercentage = totalCost > 0 ? (profit / totalCost) * 100 : 0;
 
-  return {
+  const result: ProfitData = {
     totalValue: totalValue,
     totalSpent: totalCost,
     profit,
     profitPercentage,
     isProfit: profit > 0,
   };
+
+  if (ethUsdPrice && Number.isFinite(ethUsdPrice)) {
+    result.ethUsdPrice = ethUsdPrice;
+    result.totalValueUsd = totalValue * ethUsdPrice;
+    result.totalSpentUsd = totalCost * ethUsdPrice;
+    result.profitUsd = profit * ethUsdPrice;
+  }
+
+  return result;
 };
 
 export const formatEth = (wei: string): string => {
@@ -50,11 +60,11 @@ export const formatAddress = (address: string): string => {
 };
 
 export const formatDate = (timestamp: string): string => {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
