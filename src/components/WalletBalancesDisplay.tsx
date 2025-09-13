@@ -9,18 +9,22 @@ interface WalletBalancesDisplayProps {
   address: string;
   tokensWithPrice: TokenBalancesWithPriceResponse | null;
   nativeBalances: NativeBalancesForAddressesResponse | null;
+  networthUsd?: number;
+  nativeDecimals?: number; // defaults to 18 (ETH); use 9 for SOL
 }
 
 export const WalletBalancesDisplay: React.FC<WalletBalancesDisplayProps> = ({
   address,
   tokensWithPrice,
   nativeBalances,
+  networthUsd,
+  nativeDecimals = 18,
 }) => {
   const native = nativeBalances?.result?.find(
     (w) => w.address.toLowerCase() === address.toLowerCase()
   );
-  const nativeEth = native
-    ? parseFloat(native.balance) / Math.pow(10, 18)
+  const nativeAmount = native
+    ? parseFloat(native.balance) / Math.pow(10, nativeDecimals)
     : undefined;
 
   return (
@@ -35,13 +39,23 @@ export const WalletBalancesDisplay: React.FC<WalletBalancesDisplayProps> = ({
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          {typeof networthUsd === "number" && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm font-medium text-gray-600 mb-1">
+                Net Worth (USD)
+              </div>
+              <div className="text-2xl font-bold text-gray-900">
+                ${networthUsd.toFixed(2)}
+              </div>
+            </div>
+          )}
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-sm font-medium text-gray-600 mb-1">
               Native Balance
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              {nativeEth !== undefined ? `${nativeEth.toFixed(6)} ETH` : "-"}
+              {nativeAmount !== undefined ? nativeAmount.toFixed(6) : "-"}
             </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">

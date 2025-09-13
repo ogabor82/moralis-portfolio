@@ -131,26 +131,24 @@ function App() {
         setProfitData(null); // EVM-specific PnL not applicable for SOL right now
         setProfitSummary(null);
         setProfitItems(null);
-        setNetworth({
-          total_networth_usd: portfolio?.total_value_usd
-            ? Number(portfolio.total_value_usd)
-            : undefined,
-        } as any);
+        // Portfolio endpoint does not return USD net worth directly in this SDK build
+        setNetworth(undefined as any);
 
         // Map SPL to WalletBalancesDisplay shape quickly
         const tokensWithPrice = {
-          result: (spl?.items || []).map((t: any) => ({
+          result: ((spl as any[]) || []).map((t: any) => ({
             token_address: t.mint || undefined,
             name: t.name || undefined,
             symbol: t.symbol || undefined,
             decimals: t.decimals ?? 9,
-            balance: String(t.amount_raw ?? 0),
+            balance: String(t.amount?.lamports ?? t.amountRaw ?? 0),
             usd_price: t.price_usd ? Number(t.price_usd) : undefined,
             usd_value: t.value_usd ? Number(t.value_usd) : undefined,
           })),
         } as any;
+        const lamports = Number(solBalance ?? 0);
         const nativeBalances = {
-          result: [{ address, balance: String(solBalance?.balance || 0) }],
+          result: [{ address, balance: String(lamports) }],
         } as any;
         setTokensWithPrice(tokensWithPrice);
         setNativeBalances(nativeBalances);
@@ -230,23 +228,36 @@ function App() {
           />
         )}
 
-        {profitData && currentAddress && (
+        {currentAddress && (
           <>
-            <ProfitDisplay profitData={profitData} address={currentAddress} />
-            <MoralisProfitDisplay
-              summary={profitSummary}
-              items={profitItems}
-              networth={networth}
-            />
-            <WalletBalancesDisplay
-              address={currentAddress}
-              tokensWithPrice={tokensWithPrice}
-              nativeBalances={nativeBalances}
-            />
-            <TransactionList
-              transactions={transactions}
-              walletAddress={currentAddress}
-            />
+            {profitData && (
+              <ProfitDisplay profitData={profitData} address={currentAddress} />
+            )}
+
+            {(profitSummary || profitItems || networth) && (
+              <MoralisProfitDisplay
+                summary={profitSummary}
+                items={profitItems}
+                networth={networth}
+              />
+            )}
+
+            {(tokensWithPrice || nativeBalances) && (
+              <WalletBalancesDisplay
+                address={currentAddress}
+                tokensWithPrice={tokensWithPrice}
+                nativeBalances={nativeBalances}
+                networthUsd={networth?.total_networth_usd}
+                nativeDecimals={profitData ? 18 : 9}
+              />
+            )}
+
+            {transactions.length > 0 && (
+              <TransactionList
+                transactions={transactions}
+                walletAddress={currentAddress}
+              />
+            )}
           </>
         )}
 
