@@ -48,3 +48,41 @@ export interface ProfitData {
   totalSpentUsd?: number;
   profitUsd?: number;
 }
+
+// Moralis Wallet Profitability summary response (subset of fields used in UI)
+export interface MoralisProfitabilitySummary {
+  address?: string;
+  total_buy_count?: number;
+  total_sell_count?: number;
+  total_buy_volume_usd?: number;
+  total_sell_volume_usd?: number;
+  realized_profit_usd?: number;
+  realized_profit_ratio?: number; // 0..1
+  unrealized_profit_usd?: number;
+  unrealized_profit_ratio?: number; // 0..1
+  total_fees_usd?: number;
+}
+
+export interface MoralisProfitabilityItem {
+  token_address?: string;
+  token_symbol?: string;
+  token_name?: string;
+  realized_profit_usd?: number;
+  realized_profit_ratio?: number; // 0..1
+  total_buy_count?: number;
+  total_sell_count?: number;
+  total_buy_volume_usd?: number;
+  total_sell_volume_usd?: number;
+}
+
+export interface MoralisProfitabilityResponse {
+  cursor?: string | null;
+  page?: number;
+  page_size?: number;
+  total?: number;
+  result?: MoralisProfitabilityItem[];
+}
+
+export interface MoralisNetWorthResponse {
+  total_networth_usd?: number;
+}

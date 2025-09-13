@@ -5,19 +5,36 @@ import { ProfitDisplay } from "./components/ProfitDisplay";
 import { TransactionList } from "./components/TransactionList";
 import { LoadingState } from "./components/LoadingState";
 import { ErrorState } from "./components/ErrorState";
-import { Transaction, ProfitData } from "./types";
+import {
+  Transaction,
+  ProfitData,
+  MoralisProfitabilityResponse,
+  MoralisProfitabilitySummary,
+  MoralisNetWorthResponse,
+} from "./types";
 import {
   initializeMoralis,
   getWalletTransactions,
   getEthBalance,
   getEthUsdPrice,
+  getWalletProfitability,
+  getWalletProfitabilitySummary,
+  getWalletNetWorth,
 } from "./utils/moralis";
 import { calculateProfitLoss } from "./utils/calculations";
+import { MoralisProfitDisplay } from "./components/MoralisProfitDisplay";
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [profitData, setProfitData] = useState<ProfitData | null>(null);
+  const [profitSummary, setProfitSummary] =
+    useState<MoralisProfitabilitySummary | null>(null);
+  const [profitItems, setProfitItems] =
+    useState<MoralisProfitabilityResponse | null>(null);
+  const [networth, setNetworth] = useState<MoralisNetWorthResponse | null>(
+    null
+  );
   const [currentAddress, setCurrentAddress] = useState<string>("");
   const [error, setError] = useState<string>("");
 
@@ -26,17 +43,24 @@ function App() {
     setError("");
     setTransactions([]);
     setProfitData(null);
+    setProfitSummary(null);
+    setProfitItems(null);
+    setNetworth(null);
 
     try {
       // Initialize Moralis if not already done
       await initializeMoralis();
 
       // Fetch transactions, balance and ETH/USD price in parallel
-      const [txData, balance, ethUsd] = await Promise.all([
-        getWalletTransactions(address),
-        getEthBalance(address),
-        getEthUsdPrice(),
-      ]);
+      const [txData, balance, ethUsd, summary, items, worth] =
+        await Promise.all([
+          getWalletTransactions(address),
+          getEthBalance(address),
+          getEthUsdPrice(),
+          getWalletProfitabilitySummary(address),
+          getWalletProfitability(address),
+          getWalletNetWorth(address),
+        ]);
 
       if (!txData || txData.length === 0) {
         throw new Error("No transactions found for this address");
@@ -52,6 +76,9 @@ function App() {
 
       setTransactions(txData);
       setProfitData(profitLossData);
+      setProfitSummary(summary);
+      setProfitItems(items);
+      setNetworth(worth);
       setCurrentAddress(address);
     } catch (err: any) {
       console.error("Analysis error:", err);
@@ -131,6 +158,11 @@ function App() {
         {profitData && currentAddress && (
           <>
             <ProfitDisplay profitData={profitData} address={currentAddress} />
+            <MoralisProfitDisplay
+              summary={profitSummary}
+              items={profitItems}
+              networth={networth}
+            />
             <TransactionList
               transactions={transactions}
               walletAddress={currentAddress}

@@ -1,4 +1,9 @@
 import Moralis from "moralis";
+import type {
+  MoralisProfitabilityResponse,
+  MoralisProfitabilitySummary,
+  MoralisNetWorthResponse,
+} from "../types";
 
 // Vite exposes env vars via import.meta.env and requires the VITE_ prefix
 const MORALIS_API_KEY = import.meta.env.VITE_MORALIS_API_KEY as
@@ -76,6 +81,61 @@ export const getEthUsdPrice = async (chain: string = "0x1") => {
     return response.raw.usdPrice as number;
   } catch (error) {
     console.error("Error fetching ETH/USD price:", error);
+    throw error;
+  }
+};
+
+// Wallet Profitability Summary (returns aggregated PnL metrics)
+export const getWalletProfitabilitySummary = async (
+  address: string,
+  chain: string = "0x1"
+): Promise<MoralisProfitabilitySummary> => {
+  try {
+    const response = await Moralis.EvmApi.wallets.getWalletProfitabilitySummary(
+      {
+        address,
+        chain,
+      }
+    );
+    return response.raw as MoralisProfitabilitySummary;
+  } catch (error) {
+    console.error("Error fetching wallet profitability summary:", error);
+    throw error;
+  }
+};
+
+// Wallet Profitability (token-level breakdown)
+export const getWalletProfitability = async (
+  address: string,
+  chain: string = "0x1"
+): Promise<MoralisProfitabilityResponse> => {
+  try {
+    const response = await Moralis.EvmApi.wallets.getWalletProfitability({
+      address,
+      chain,
+    });
+    return response.raw as MoralisProfitabilityResponse;
+  } catch (error) {
+    console.error("Error fetching wallet profitability:", error);
+    throw error;
+  }
+};
+
+// Wallet Net Worth
+export const getWalletNetWorth = async (
+  address: string,
+  chain: string = "0x1"
+): Promise<MoralisNetWorthResponse> => {
+  try {
+    const response = await Moralis.EvmApi.wallets.getWalletNetWorth({
+      address,
+      chains: [chain],
+    });
+    const raw = response.raw as unknown as { total_networth_usd?: string };
+    const totalUsd = parseFloat(raw.total_networth_usd ?? "0");
+    return { total_networth_usd: totalUsd } as MoralisNetWorthResponse;
+  } catch (error) {
+    console.error("Error fetching wallet net worth:", error);
     throw error;
   }
 };
