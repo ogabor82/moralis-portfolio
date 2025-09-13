@@ -67,12 +67,20 @@ export interface MoralisProfitabilityItem {
   token_address?: string;
   token_symbol?: string;
   token_name?: string;
+  // Alternative field names returned by API
+  symbol?: string;
+  name?: string;
   realized_profit_usd?: number;
   realized_profit_ratio?: number; // 0..1
+  realized_profit_percentage?: number; // percentage value
   total_buy_count?: number;
   total_sell_count?: number;
+  total_buys?: number;
+  total_sells?: number;
   total_buy_volume_usd?: number;
   total_sell_volume_usd?: number;
+  avg_buy_price_usd?: number | string;
+  avg_sell_price_usd?: number | string;
 }
 
 export interface MoralisProfitabilityResponse {

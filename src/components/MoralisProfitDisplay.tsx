@@ -85,21 +85,21 @@ export const MoralisProfitDisplay: React.FC<MoralisProfitDisplayProps> = ({
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="text-gray-600">
-                    <th className="py-2 pr-4">Token</th>
+                    <th className="py-2 pr-4">Symbol</th>
+                    <th className="py-2 pr-4">Name</th>
                     <th className="py-2 pr-4">Realized PnL (USD)</th>
+                    <th className="py-2 pr-4">Avg Buy / Sell ($)</th>
                     <th className="py-2 pr-4">Buy / Sell</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.result.map((it, idx) => (
                     <tr key={idx} className="border-t">
-                      <td className="py-2 pr-4">
-                        <div className="font-medium text-gray-900">
-                          {it.token_symbol || "-"}
-                        </div>
-                        <div className="text-gray-500">
-                          {it.token_name || it.token_address || ""}
-                        </div>
+                      <td className="py-2 pr-4 font-medium text-gray-900">
+                        {it.symbol || "-"}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-700">
+                        {it.name || it.token_address || ""}
                       </td>
                       <td className="py-2 pr-4">
                         {it.realized_profit_usd !== undefined
@@ -114,11 +114,26 @@ export const MoralisProfitDisplay: React.FC<MoralisProfitDisplayProps> = ({
                             % )
                           </span>
                         )}
+                        {it.realized_profit_percentage !== undefined && (
+                          <span className="ml-2 text-gray-500">
+                            ({Number(it.realized_profit_percentage).toFixed(2)}%
+                            )
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 pr-4 text-gray-700">
-                        {(it.total_buy_count || 0) +
+                        {it.avg_buy_price_usd !== undefined
+                          ? `$${Number(it.avg_buy_price_usd).toFixed(4)}`
+                          : "-"}
+                        {" / "}
+                        {it.avg_sell_price_usd !== undefined
+                          ? `$${Number(it.avg_sell_price_usd).toFixed(4)}`
+                          : "-"}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-700">
+                        {(it.total_buy_count ?? it.total_buys ?? 0) +
                           " / " +
-                          (it.total_sell_count || 0)}
+                          (it.total_sell_count ?? it.total_sells ?? 0)}
                       </td>
                     </tr>
                   ))}
